@@ -1,6 +1,8 @@
 package AttitudeTracker;
 
 import java.awt.Dimension;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -19,7 +21,6 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
 public class AttitudeTrackerTests {
-
 
 	public static void main(String[] args) {
 		testSimpleEkfWithSyntheticData();
@@ -102,14 +103,33 @@ public class AttitudeTrackerTests {
 		
 		JFreeChart chart = ChartFactory.createXYLineChart("Simple EKF test", "Time (s)", "Value", sc);
 		
-		showChart(chart);
+		showChart(chart, true);
 	}
 
-	private static void showChart(JFreeChart chart) {
+	private static void showChart(JFreeChart chart, boolean terminateAfter) {
 		ChartPanel panel = new ChartPanel(chart);
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
         JDialog dialog = new JDialog();
+        if(terminateAfter) {
+	        dialog.addWindowListener(new WindowListener() {
+				@Override
+				public void windowOpened(WindowEvent e) {}
+				@Override
+				public void windowIconified(WindowEvent e) {}
+				@Override
+				public void windowDeiconified(WindowEvent e) {}
+				@Override
+				public void windowDeactivated(WindowEvent e) {}
+				@Override
+				public void windowClosing(WindowEvent e) { System.exit(0);}
+				@Override
+				public void windowClosed(WindowEvent e) {}
+				@Override
+				public void windowActivated(WindowEvent e) {}
+			});
+        }
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.add(panel);
         dialog.pack();
         dialog.setVisible(true);        
