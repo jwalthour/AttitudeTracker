@@ -49,7 +49,7 @@ import org.jfree.data.xy.XYSeriesCollection;
 public class AttitudeTrackerTests {
 
 	public static void main(String[] args) {
-//		testSimpleKfWithSyntheticData(false);
+		testSimpleKfWithSyntheticData(false);
 		testSpeedKfWithSyntheticData(true);
 	}
 	
@@ -62,14 +62,16 @@ public class AttitudeTrackerTests {
 		// Generate synthetic data for a simple fictional movement process
 		final int NUM_DATAPOINTS = 100;
 		final double DT = 0.2; // seconds
-		final double PROCESS_NOISE_MAGNITUDE = 5;
-		final double MEASUREMENT_NOISE_MAGNITUDE = 10;
+		final double PROCESS_NOISE_MAGNITUDE = 10;
+		final double MEASUREMENT_NOISE_MAGNITUDE = 2;
 		final double PROCESS_RATE = 0.9; // the only parameter of this fictional process
 		double[] time         = new double[NUM_DATAPOINTS];
 		double[] x_ideal      = new double[NUM_DATAPOINTS];
 		double[] x_actual     = new double[NUM_DATAPOINTS];
 		double[] x_measured   = new double[NUM_DATAPOINTS];
 		double[] x_estimated  = new double[NUM_DATAPOINTS];
+		double x_cum_error = 0; // cumulative positional error = estimated - actual
+		double x_cum_pred_error = 0; // cumulative positional error = estimated - actual
 		time       [0] =   0.0;
 		x_ideal    [0] = 100.0;
 		x_actual   [0] = 100.0;
@@ -112,9 +114,17 @@ public class AttitudeTrackerTests {
 				{x_measured[i]}
 			});
 			kf.predict();
+			double x_prediction = kf.getState().data[0];
 			kf.update(z, R);
 			x_estimated[i] = kf.getState().data[0];
+			double x_err = x_actual[i] - x_estimated[i]; 
+			x_cum_error += x_err * x_err;
+			double x_pred_err = x_actual[i] - x_prediction;
+			x_cum_pred_error += x_pred_err * x_pred_err;
 		}
+		double x_stddev = Math.sqrt(x_cum_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		double x_pred_stddev = Math.sqrt(x_cum_pred_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		System.out.println("Typical error: " + x_stddev + " typical deviation from prediction: " + x_pred_stddev);
 		
 		// Graph results
 		XYSeries x_i_s = new XYSeries("Movement model");
@@ -137,6 +147,7 @@ public class AttitudeTrackerTests {
 		
 		showChart(chart, terminateAfter);
 	}
+	
 	/**
 	 * Run a test on the KF class, using synthetic data,
 	 * modeling a trivially simple movement process, tracking
@@ -156,11 +167,15 @@ public class AttitudeTrackerTests {
 		double[] x_actual     = new double[NUM_DATAPOINTS];
 		double[] x_measured   = new double[NUM_DATAPOINTS];
 		double[] x_estimated  = new double[NUM_DATAPOINTS];
+		double x_cum_error = 0; // cumulative positional error = estimated - actual
+		double x_cum_pred_error = 0; // cumulative positional error = estimated - actual
 		// V represents the velocity (derivative of position)
 		double[] v_ideal      = new double[NUM_DATAPOINTS];
 		double[] v_actual     = new double[NUM_DATAPOINTS];
 		double[] v_measured   = new double[NUM_DATAPOINTS];
 		double[] v_estimated  = new double[NUM_DATAPOINTS];
+		double v_cum_error = 0; // cumulative positional error = estimated - actual
+		double v_cum_pred_error = 0; // cumulative positional error = estimated - actual
 		time       [0] =   0.0;
 		x_ideal    [0] = 100.0;
 		x_actual   [0] = 100.0;
@@ -217,10 +232,26 @@ public class AttitudeTrackerTests {
 				{v_measured[i]},
 			});
 			kf.predict();
+			double x_prediction = kf.getState().data[0];
+			double v_prediction = kf.getState().data[1];
 			kf.update(z, R);
 			x_estimated[i] = kf.getState().data[0];
 			v_estimated[i] = kf.getState().data[1];
+			double x_err = x_actual[i] - x_estimated[i]; 
+			x_cum_error += x_err * x_err;
+			double x_pred_err = x_actual[i] - x_prediction;
+			x_cum_pred_error += x_pred_err * x_pred_err;
+			double v_err = v_actual[i] - v_estimated[i]; 
+			v_cum_error += v_err * v_err;
+			double v_pred_err = v_actual[i] - v_prediction;
+			v_cum_pred_error += v_pred_err * v_pred_err;
 		}
+		double x_stddev = Math.sqrt(x_cum_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		double x_pred_stddev = Math.sqrt(x_cum_pred_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		double v_stddev = Math.sqrt(v_cum_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		double v_pred_stddev = Math.sqrt(v_cum_pred_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		System.out.println("Typical X error: " + x_stddev + " typical X deviation from prediction: " + x_pred_stddev);
+		System.out.println("Typical V error: " + v_stddev + " typical V deviation from prediction: " + v_pred_stddev);
 		
 		// Graph results
 		XYSeries x_i_s = new XYSeries("Model position");
@@ -256,6 +287,8 @@ public class AttitudeTrackerTests {
 		showChart(chart, terminateAfter);
 	}
 
+
+	
 	private static void showChart(JFreeChart chart, boolean terminateAfter) {
 		ChartPanel panel = new ChartPanel(chart);
         panel.setFillZoomRectangle(true);
