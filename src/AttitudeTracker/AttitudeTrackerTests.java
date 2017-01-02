@@ -146,9 +146,9 @@ public class AttitudeTrackerTests {
 		// Generate synthetic data for a simple fictional movement process
 		final int NUM_DATAPOINTS = 100;
 		final double DT = 0.2; // seconds
-		final double PROCESS_NOISE_MAGNITUDE = 0.001;
-		final double X_MEASUREMENT_NOISE_MAGNITUDE = 10;
-		final double V_MEASUREMENT_NOISE_MAGNITUDE = 10;
+		final double PROCESS_NOISE_MAGNITUDE = 10;
+		final double X_MEASUREMENT_NOISE_MAGNITUDE = 2;
+		final double V_MEASUREMENT_NOISE_MAGNITUDE = 5;
 		final double PROCESS_RATE = 0.9; // the only parameter of this fictional process
 		double[] time         = new double[NUM_DATAPOINTS];
 		// X represents the position
@@ -187,12 +187,12 @@ public class AttitudeTrackerTests {
 			{0.0, PROCESS_RATE},
 		}); // The system dynamics model, S. Levy's tutorial calls this A
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
-			{0.0, 0.0},
+			{PROCESS_NOISE_MAGNITUDE * 0.25, 0.0},
 			{0.0, 0.0},
 		}); // Noise covariance, must be estimated or ignored.  S. Levy's tutorial lacks this term, but it's added to the system dynamics model each predict step
 		DenseMatrix64F H = new DenseMatrix64F(new double[][]{
 			{1.0, 0.0},
-			{0.0, 1.0},
+			{0.0, 0.5},
 		}); // Maps observations to state variables - S. Levy's tutorial calls this C
 		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
 			{X_MEASUREMENT_NOISE_MAGNITUDE * 0.5, 0.0},
