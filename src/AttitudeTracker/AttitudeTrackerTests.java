@@ -30,8 +30,8 @@ public class AttitudeTrackerTests {
 		// Generate synthetic data for a simple fictional movement process
 		final int NUM_DATAPOINTS = 100;
 		final double DT = 0.2; // seconds
-		final double PROCESS_NOISE_MAGNITUDE = 0.5;
-		final double MEASUREMENT_NOISE_MAGNITUDE = 1.5;
+		final double PROCESS_NOISE_MAGNITUDE = 5;
+		final double MEASUREMENT_NOISE_MAGNITUDE = 10;
 		final double PROCESS_RATE = 0.9; // the only parameter of this fictional process
 		double[] time         = new double[NUM_DATAPOINTS];
 		double[] x_ideal      = new double[NUM_DATAPOINTS];
