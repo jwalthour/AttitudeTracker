@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2009-2015, Peter Abeles. All Rights Reserved.
+ * 
  * Copied into AttitudeTracker package by John Walthour in 2016;
  * license information below continues to apply.  Original file can be
  * found here:
