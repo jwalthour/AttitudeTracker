@@ -1,27 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-core-0.30-sources.jar"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-core-0.30.jar"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-dense64-0.30-sources.jar"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-dense64-0.30.jar"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-denseC64-0.30-sources.jar"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-denseC64-0.30.jar"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-equation-0.30-sources.jar"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-equation-0.30.jar"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-simple-0.30-sources.jar"/>
-	<classpathentry kind="lib" path="libs/EJML/EJML-simple-0.30.jar"/>
+	<classpathentry kind="lib" path="libs/commons-csv-1.4/commons-csv-1.4.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-core-0.30-sources.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-core-0.30.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-dense64-0.30-sources.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-dense64-0.30.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-denseC64-0.30-sources.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-denseC64-0.30.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-equation-0.30-sources.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-equation-0.30.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-simple-0.30-sources.jar"/>
+	<classpathentry kind="lib" path="libs/ejml-v0.30-libs/EJML-simple-0.30.jar"/>
+	<classpathentry kind="lib" path="libs/commons-csv-1.4/commons-csv-1.4-sources.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/hamcrest-core-1.3.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/jcommon-1.0.23.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/jfreechart-1.0.19-experimental.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/jfreechart-1.0.19-swt.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/jfreechart-1.0.19.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/jfreesvg-2.0.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/junit-4.11.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/orsoncharts-1.4-eval-nofx.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/orsonpdf-1.6-eval.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/servlet.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19/swtgraphics2d.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="libs/jfreechart/hamcrest-core-1.3.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/jcommon-1.0.23.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/jfreechart-1.0.19-experimental.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/jfreechart-1.0.19-swt.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/jfreechart-1.0.19.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/jfreesvg-2.0.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/junit-4.11.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/orsoncharts-1.4-eval-nofx.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/orsonpdf-1.6-eval.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/servlet.jar"/>
-	<classpathentry kind="lib" path="libs/jfreechart/swtgraphics2d.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

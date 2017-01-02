@@ -13,6 +13,7 @@
 
 package AttitudeTracker;
 
+
 public class AttitudeTracker {
 	private SingleAxisRotatingObjectTracker rollTracker  = new SingleAxisRotatingObjectTracker();
 	private SingleAxisRotatingObjectTracker pitchTracker = new SingleAxisRotatingObjectTracker();
@@ -55,4 +56,7 @@ public class AttitudeTracker {
 			haveFirstReading = true;
 		}
 	}
+	
+	
+
 }
