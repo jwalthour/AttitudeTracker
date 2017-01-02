@@ -147,8 +147,8 @@ public class AttitudeTrackerTests {
 		final int NUM_DATAPOINTS = 100;
 		final double DT = 0.2; // seconds
 		final double PROCESS_NOISE_MAGNITUDE = 0.001;
-		final double X_MEASUREMENT_NOISE_MAGNITUDE = 0;
-		final double V_MEASUREMENT_NOISE_MAGNITUDE = 0;
+		final double X_MEASUREMENT_NOISE_MAGNITUDE = 10;
+		final double V_MEASUREMENT_NOISE_MAGNITUDE = 10;
 		final double PROCESS_RATE = 0.9; // the only parameter of this fictional process
 		double[] time         = new double[NUM_DATAPOINTS];
 		// X represents the position
@@ -167,8 +167,8 @@ public class AttitudeTrackerTests {
 		x_measured [0] = 100.0;
 		x_estimated[0] =   0.0;
 		v_ideal    [0] =   0.0;
-		v_actual   [0] =   0.0;
-		v_measured [0] =   0.0;
+		v_actual   [0] = -50.0;
+		v_measured [0] = -50.0;
 		v_estimated[0] =   0.0;
 		for(int i = 1; i < NUM_DATAPOINTS; ++i) {
 			time[i] = i * DT;
@@ -183,8 +183,8 @@ public class AttitudeTrackerTests {
 		// Configure filter
 		KalmanFilterSimple kf = new KalmanFilterSimple();
 		DenseMatrix64F F = new DenseMatrix64F(new double[][]{
-			{PROCESS_RATE, DT},
-			{0.0, 1},
+			{1.0, DT},
+			{0.0, PROCESS_RATE},
 		}); // The system dynamics model, S. Levy's tutorial calls this A
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
 			{0.0, 0.0},
@@ -195,13 +195,9 @@ public class AttitudeTrackerTests {
 			{0.0, 1.0},
 		}); // Maps observations to state variables - S. Levy's tutorial calls this C
 		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
-//			{X_MEASUREMENT_NOISE_MAGNITUDE * 0.5, 0.0},
-//			{1.0, 0.0},
-			{1.0, 0.0},
-//			{0.0, V_MEASUREMENT_NOISE_MAGNITUDE * 0.5},
-//			{0.0, 1.0},
-			{0.0, 1.0},
-		}); // Sensor value variance/covariance
+			{X_MEASUREMENT_NOISE_MAGNITUDE * 0.5, 0.0},
+			{0.0, V_MEASUREMENT_NOISE_MAGNITUDE * 0.5},
+		}); // Sensor value variance/covariance.  This is a fake estimate for now.
 		kf.configure(F, Q, H);
 		
 		// Run filter
@@ -212,7 +208,7 @@ public class AttitudeTrackerTests {
 		DenseMatrix64F p_init = new DenseMatrix64F(new double [][]{
 			{1, 1},
 			{1, 1},
-		}); // Arbitrary, cannot be 0
+		}); // Arbitrary at the moment
 		kf.setState(x_init, p_init);
 		
 		for(int i = 1; i < NUM_DATAPOINTS; ++i) {
