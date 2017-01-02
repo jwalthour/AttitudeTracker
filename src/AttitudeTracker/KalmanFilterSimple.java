@@ -44,10 +44,17 @@ public class KalmanFilterSimple {
     private SimpleMatrix x,P;
 
     public void configure(DenseMatrix64F F, DenseMatrix64F Q, DenseMatrix64F H) {
-        this.F = new SimpleMatrix(F);
+        setF(F);
         this.Q = new SimpleMatrix(Q);
         this.H = new SimpleMatrix(H);
     }
+    
+    /** 
+     * Update system model.  The system model includes dt, which is
+     * why this is not fixed at initialization.
+     *
+     */
+    public void setF(DenseMatrix64F F) { this.F = new SimpleMatrix(F); }
 
     public void setState(DenseMatrix64F x, DenseMatrix64F P) {
         this.x = new SimpleMatrix(x);
