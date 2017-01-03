@@ -47,10 +47,18 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
 public class AttitudeTrackerTests {
+	public static final int NUM_DATAPOINTS = 10000;
+	public static final double DT = 0.2; // seconds
+	public static final double PROCESS_NOISE_MAGNITUDE = 10;
+	public static final double X_MEASUREMENT_NOISE_MAGNITUDE = 2;
+	public static final double V_MEASUREMENT_NOISE_MAGNITUDE = 0.000001;
+	public static final double A_MEASUREMENT_NOISE_MAGNITUDE = 0.000001;
+	public static final double PROCESS_RATE = 1-10.0/NUM_DATAPOINTS; // the only parameter of this fictional process
 
 	public static void main(String[] args) {
 		testSimpleKfWithSyntheticData(false);
-		testSpeedKfWithSyntheticData(true);
+		testSpeedKfWithSyntheticData(false);
+		testAccelKfWithSyntheticData(true);
 	}
 	
 	/**
@@ -60,11 +68,6 @@ public class AttitudeTrackerTests {
 	 */
 	public static void testSimpleKfWithSyntheticData(boolean terminateAfter) {
 		// Generate synthetic data for a simple fictional movement process
-		final int NUM_DATAPOINTS = 100;
-		final double DT = 0.2; // seconds
-		final double PROCESS_NOISE_MAGNITUDE = 10;
-		final double MEASUREMENT_NOISE_MAGNITUDE = 2;
-		final double PROCESS_RATE = 0.9; // the only parameter of this fictional process
 		double[] time         = new double[NUM_DATAPOINTS];
 		double[] x_ideal      = new double[NUM_DATAPOINTS];
 		double[] x_actual     = new double[NUM_DATAPOINTS];
@@ -81,7 +84,7 @@ public class AttitudeTrackerTests {
 			time[i] = i * DT;
 			x_ideal[i]    = x_ideal [i-1] * PROCESS_RATE;
 			x_actual[i]   = x_ideal [i]   + PROCESS_NOISE_MAGNITUDE     * (Math.random() * 2 - 1);
-			x_measured[i] = x_actual[i]   + MEASUREMENT_NOISE_MAGNITUDE * (Math.random() * 2 - 1);
+			x_measured[i] = x_actual[i]   + X_MEASUREMENT_NOISE_MAGNITUDE * (Math.random() * 2 - 1);
 		}
 		
 		// Configure filter
@@ -124,7 +127,7 @@ public class AttitudeTrackerTests {
 		}
 		double x_stddev = Math.sqrt(x_cum_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
 		double x_pred_stddev = Math.sqrt(x_cum_pred_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
-		System.out.println("Typical error: " + x_stddev + " typical deviation from prediction: " + x_pred_stddev);
+		System.out.println("Positional KF: Typical error: " + x_stddev + " typical deviation from prediction: " + x_pred_stddev);
 		
 		// Graph results
 		XYSeries x_i_s = new XYSeries("Movement model");
@@ -143,7 +146,7 @@ public class AttitudeTrackerTests {
 		sc.addSeries(x_a_s);
 		sc.addSeries(x_i_s);
 		
-		JFreeChart chart = ChartFactory.createXYLineChart("Simple kf test", "Time (s)", "Value", sc);
+		JFreeChart chart = ChartFactory.createXYLineChart("Simple KF test", "Time (s)", "Value", sc);
 		
 		showChart(chart, terminateAfter);
 	}
@@ -155,27 +158,21 @@ public class AttitudeTrackerTests {
 	 */
 	public static void testSpeedKfWithSyntheticData(boolean terminateAfter) {
 		// Generate synthetic data for a simple fictional movement process
-		final int NUM_DATAPOINTS = 100;
-		final double DT = 0.2; // seconds
-		final double PROCESS_NOISE_MAGNITUDE = 10;
-		final double X_MEASUREMENT_NOISE_MAGNITUDE = 2;
-		final double V_MEASUREMENT_NOISE_MAGNITUDE = 5;
-		final double PROCESS_RATE = 0.9; // the only parameter of this fictional process
 		double[] time         = new double[NUM_DATAPOINTS];
 		// X represents the position
 		double[] x_ideal      = new double[NUM_DATAPOINTS];
 		double[] x_actual     = new double[NUM_DATAPOINTS];
 		double[] x_measured   = new double[NUM_DATAPOINTS];
 		double[] x_estimated  = new double[NUM_DATAPOINTS];
-		double x_cum_error = 0; // cumulative positional error = estimated - actual
-		double x_cum_pred_error = 0; // cumulative positional error = estimated - actual
+		double   x_cum_error = 0; // cumulative error = estimated - actual
+		double   x_cum_pred_error = 0; // cumulative predicted error = predicted - actual
 		// V represents the velocity (derivative of position)
 		double[] v_ideal      = new double[NUM_DATAPOINTS];
 		double[] v_actual     = new double[NUM_DATAPOINTS];
 		double[] v_measured   = new double[NUM_DATAPOINTS];
 		double[] v_estimated  = new double[NUM_DATAPOINTS];
-		double v_cum_error = 0; // cumulative positional error = estimated - actual
-		double v_cum_pred_error = 0; // cumulative positional error = estimated - actual
+		double   v_cum_error = 0; // cumulative error = estimated - actual
+		double   v_cum_pred_error = 0; // cumulative prediction error = predicted - actual
 		time       [0] =   0.0;
 		x_ideal    [0] = 100.0;
 		x_actual   [0] = 100.0;
@@ -207,7 +204,7 @@ public class AttitudeTrackerTests {
 		}); // Noise covariance, must be estimated or ignored.  S. Levy's tutorial lacks this term, but it's added to the system dynamics model each predict step
 		DenseMatrix64F H = new DenseMatrix64F(new double[][]{
 			{1.0, 0.0},
-			{0.0, 0.5},
+			{0.0, 1.0},
 		}); // Maps observations to state variables - S. Levy's tutorial calls this C
 		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
 			{X_MEASUREMENT_NOISE_MAGNITUDE * 0.5, 0.0},
@@ -221,8 +218,8 @@ public class AttitudeTrackerTests {
 			{v_measured[0]},
 		}); // Cheating a little here with an accurate initial estimate
 		DenseMatrix64F p_init = new DenseMatrix64F(new double [][]{
-			{1, 1},
-			{1, 1},
+			{1, 0},
+			{0, 1},
 		}); // Arbitrary at the moment
 		kf.setState(x_init, p_init);
 		
@@ -250,8 +247,8 @@ public class AttitudeTrackerTests {
 		double x_pred_stddev = Math.sqrt(x_cum_pred_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
 		double v_stddev = Math.sqrt(v_cum_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
 		double v_pred_stddev = Math.sqrt(v_cum_pred_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
-		System.out.println("Typical X error: " + x_stddev + " typical X deviation from prediction: " + x_pred_stddev);
-		System.out.println("Typical V error: " + v_stddev + " typical V deviation from prediction: " + v_pred_stddev);
+		System.out.println("Speed KF: Typical X error: " + x_stddev + " typical X deviation from prediction: " + x_pred_stddev);
+		System.out.println("Speed KF: Typical V error: " + v_stddev + " typical V deviation from prediction: " + v_pred_stddev);
 		
 		// Graph results
 		XYSeries x_i_s = new XYSeries("Model position");
@@ -282,7 +279,183 @@ public class AttitudeTrackerTests {
 		sc.addSeries(v_a_s);
 		sc.addSeries(v_i_s);
 		
-		JFreeChart chart = ChartFactory.createXYLineChart("Speed kf test", "Time (s)", "Value", sc);
+		JFreeChart chart = ChartFactory.createXYLineChart("Speed KF test", "Time (s)", "Value", sc);
+		
+		showChart(chart, terminateAfter);
+	}
+
+
+	/**
+	 * Run a test on the KF class, using synthetic data,
+	 * modeling a trivially simple movement process, tracking
+	 * position, velocity, and acceleration.
+	 */
+	public static void testAccelKfWithSyntheticData(boolean terminateAfter) {
+		// Generate synthetic data for a simple fictional movement process
+		double[] time         = new double[NUM_DATAPOINTS];
+		// X represents the position
+		double[] x_ideal      = new double[NUM_DATAPOINTS];
+		double[] x_actual     = new double[NUM_DATAPOINTS];
+		double[] x_measured   = new double[NUM_DATAPOINTS];
+		double[] x_estimated  = new double[NUM_DATAPOINTS];
+		double   x_cum_error = 0; // cumulative error = estimated - actual
+		double   x_cum_pred_error = 0; // cumulative predicted error = predicted - actual
+		// V represents the velocity (derivative of position)
+		double[] v_ideal      = new double[NUM_DATAPOINTS];
+		double[] v_actual     = new double[NUM_DATAPOINTS];
+		double[] v_measured   = new double[NUM_DATAPOINTS];
+		double[] v_estimated  = new double[NUM_DATAPOINTS];
+		double   v_cum_error = 0; // cumulative error = estimated - actual
+		double   v_cum_pred_error = 0; // cumulative prediction error = predicted - actual
+		// A represents the acceleration (derivative of velocity)
+		double[] a_ideal      = new double[NUM_DATAPOINTS];
+		double[] a_actual     = new double[NUM_DATAPOINTS];
+		double[] a_measured   = new double[NUM_DATAPOINTS];
+		double[] a_estimated  = new double[NUM_DATAPOINTS];
+		double   a_cum_error = 0; // cumulative error = estimated - actual
+		double   a_cum_pred_error = 0; // cumulative predicted error = predicted - actual
+		time       [0] =   0.0;
+		x_ideal    [0] = 100.0;
+		x_actual   [0] = 100.0;
+		x_measured [0] = 100.0;
+		x_estimated[0] =   0.0;
+		v_ideal    [0] =   0.0;
+		v_actual   [0] = -50.0;
+		v_measured [0] = -50.0;
+		v_estimated[0] =   0.0;
+		a_ideal    [0] =   0.0;
+		a_actual   [0] =   0.0;
+		a_measured [0] =   0.0;
+		a_estimated[0] =   0.0;
+		for(int i = 1; i < NUM_DATAPOINTS; ++i) {
+			time[i] = i * DT;
+			x_ideal[i]    = x_ideal [i-1] * PROCESS_RATE;
+			x_actual[i]   = x_ideal [i]   + PROCESS_NOISE_MAGNITUDE       * (Math.random() * 2 - 1);
+			x_measured[i] = x_actual[i]   + X_MEASUREMENT_NOISE_MAGNITUDE * (Math.random() * 2 - 1);
+			v_ideal[i]    = (x_ideal [i] - x_ideal [i-1]) / DT;
+			v_actual[i]   = (x_actual[i] - x_actual[i-1]) / DT;
+			v_measured[i] = v_actual[i]   + V_MEASUREMENT_NOISE_MAGNITUDE * (Math.random() * 2 - 1);
+			a_ideal[i]    = (v_ideal [i] - v_ideal [i-1]) / DT;
+			a_actual[i]   = (v_actual[i] - v_actual[i-1]) / DT;
+			a_measured[i] = a_actual[i]   + A_MEASUREMENT_NOISE_MAGNITUDE * (Math.random() * 2 - 1);
+		}
+		
+		// Configure filter
+		KalmanFilterSimple kf = new KalmanFilterSimple();
+		DenseMatrix64F F = new DenseMatrix64F(new double[][]{
+			{1.0, DT, 0.0},
+			{0.0, 1.0, DT},
+			{0.0, 0.0, 0.0},
+		}); // The system dynamics model, S. Levy's tutorial calls this A
+		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
+			{PROCESS_NOISE_MAGNITUDE * 0.25, 0.0, 0.0},
+			{0.0, 0.0, 0.0},
+			{0.0, 0.0, 0.0},
+		}); // Noise covariance, must be estimated or ignored.  S. Levy's tutorial lacks this term, but it's added to the system dynamics model each predict step
+		DenseMatrix64F H = new DenseMatrix64F(new double[][]{
+			{1.0, 0.0, 0.0},
+			{0.0, 1.0, 0.0},
+			{0.0, 0.0, 1.0},
+		}); // Maps observations to state variables - S. Levy's tutorial calls this C
+		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
+			{X_MEASUREMENT_NOISE_MAGNITUDE * 0.5, 0.0, 0.0},
+			{0.0, V_MEASUREMENT_NOISE_MAGNITUDE * 0.5, 0.0},
+			{0.0, 0.0, A_MEASUREMENT_NOISE_MAGNITUDE * 0.5},
+		}); // Sensor value variance/covariance.  This is a fake estimate for now.
+		kf.configure(F, Q, H);
+		
+		// Run filter
+		DenseMatrix64F x_init = new DenseMatrix64F(new double [][]{
+			{x_measured[0]},
+			{v_measured[0]},
+			{a_measured[0]},
+		}); // Cheating a little here with an accurate initial estimate
+		DenseMatrix64F p_init = new DenseMatrix64F(new double [][]{
+			{1, 0, 0},
+			{0, 1, 0},
+			{0, 0, 1},
+		}); // Arbitrary at the moment
+		kf.setState(x_init, p_init);
+		
+		for(int i = 1; i < NUM_DATAPOINTS; ++i) {
+			DenseMatrix64F z = new DenseMatrix64F(new double [][]{
+				{x_measured[i]},
+				{v_measured[i]},
+				{a_measured[i]},
+			});
+			kf.predict();
+			double x_prediction = kf.getState().data[0];
+			double v_prediction = kf.getState().data[1];
+			double a_prediction = kf.getState().data[2];
+			kf.update(z, R);
+			x_estimated[i] = kf.getState().data[0];
+			v_estimated[i] = kf.getState().data[1];
+			a_estimated[i] = kf.getState().data[2];
+			double x_err = x_actual[i] - x_estimated[i]; 
+			x_cum_error += x_err * x_err;
+			double x_pred_err = x_actual[i] - x_prediction;
+			x_cum_pred_error += x_pred_err * x_pred_err;
+			double v_err = v_actual[i] - v_estimated[i]; 
+			v_cum_error += v_err * v_err;
+			double v_pred_err = v_actual[i] - v_prediction;
+			v_cum_pred_error += v_pred_err * v_pred_err;
+			double a_err = a_actual[i] - a_estimated[i]; 
+			a_cum_error += a_err * a_err;
+			double a_pred_err = a_actual[i] - a_prediction;
+			a_cum_pred_error += a_pred_err * a_pred_err;
+		}
+		double x_stddev = Math.sqrt(x_cum_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		double x_pred_stddev = Math.sqrt(x_cum_pred_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		double v_stddev = Math.sqrt(v_cum_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		double v_pred_stddev = Math.sqrt(v_cum_pred_error / NUM_DATAPOINTS); // not actually the standard deviation but a similar computation
+		double a_stddev = Math.sqrt(a_cum_error / NUM_DATAPOINTS); // not actually the standard deaiation but a similar computation
+		double a_pred_stddev = Math.sqrt(a_cum_pred_error / NUM_DATAPOINTS); // not actually the standard deaiation but a similar computation
+		System.out.println("Accel KF: Typical X error: " + x_stddev + " typical X deviation from prediction: " + x_pred_stddev);
+		System.out.println("Accel KF: Typical V error: " + v_stddev + " typical V deviation from prediction: " + v_pred_stddev);
+		System.out.println("Accel KF: Typical A error: " + a_stddev + " typical A deviation from prediction: " + a_pred_stddev);
+		
+		// Graph results
+		XYSeries x_i_s = new XYSeries("Model position");
+		XYSeries x_a_s = new XYSeries("Actual position");
+		XYSeries x_m_s = new XYSeries("Measured position");
+		XYSeries x_e_s = new XYSeries("Estimated position");
+		XYSeries v_i_s = new XYSeries("Model speed");
+		XYSeries v_a_s = new XYSeries("Actual speed");
+		XYSeries v_m_s = new XYSeries("Measured speed");
+		XYSeries v_e_s = new XYSeries("Estimated speed");
+		XYSeries a_i_s = new XYSeries("Model accel");
+		XYSeries a_a_s = new XYSeries("Actual accel");
+		XYSeries a_m_s = new XYSeries("Measured accel");
+		XYSeries a_e_s = new XYSeries("Estimated accel");
+		for(int i = 1; i < NUM_DATAPOINTS; ++i) {
+			x_i_s.add(time[i], x_ideal[i]);
+			x_a_s.add(time[i], x_actual[i]);
+			x_m_s.add(time[i], x_measured[i]);
+			x_e_s.add(time[i], x_estimated[i]);
+			v_i_s.add(time[i], v_ideal[i]);
+			v_a_s.add(time[i], v_actual[i]);
+			v_m_s.add(time[i], v_measured[i]);
+			v_e_s.add(time[i], v_estimated[i]);
+			a_i_s.add(time[i], a_ideal[i]);
+			a_a_s.add(time[i], a_actual[i]);
+			a_m_s.add(time[i], a_measured[i]);
+			a_e_s.add(time[i], a_estimated[i]);
+		}
+		XYSeriesCollection sc = new XYSeriesCollection();
+		sc.addSeries(x_e_s);
+		sc.addSeries(x_m_s);
+		sc.addSeries(x_a_s);
+		sc.addSeries(x_i_s);
+		sc.addSeries(v_e_s);
+		sc.addSeries(v_m_s);
+		sc.addSeries(v_a_s);
+		sc.addSeries(v_i_s);
+		sc.addSeries(a_e_s);
+		sc.addSeries(a_m_s);
+		sc.addSeries(a_a_s);
+		sc.addSeries(a_i_s);
+		
+		JFreeChart chart = ChartFactory.createXYLineChart("Accel KF test", "Time (s)", "Value", sc);
 		
 		showChart(chart, terminateAfter);
 	}
