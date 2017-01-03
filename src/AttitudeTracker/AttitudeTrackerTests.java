@@ -649,7 +649,7 @@ public class AttitudeTrackerTests {
 		final double YAW_PROCESS_NOISE_MAGNITUDE_RAD = 5 * Math.PI / 180;
 		final double YAW_RATE_PROCESS_NOISE_MAGNITUDE_RAD_S = 5 * Math.PI / 180;
 		final double YAW_MEASUREMENT_NOISE_MAGNITUDE_RAD = 15 * Math.PI / 180;
-		final double YAW_RATE_MEASUREMENT_NOISE_MAGNITUDE_RAD_PER_S = 1 * Math.PI / 180;
+		final double YAW_RATE_MEASUREMENT_NOISE_MAGNITUDE_RAD_PER_S = 10 * Math.PI / 180;
 
 		double[] time          = new double[NUM_DATAPOINTS];
 		// Control input
@@ -712,24 +712,28 @@ public class AttitudeTrackerTests {
 		}
 		
 		// Configure filter
-		KalmanFilterSimple kf = new KalmanFilterSimple();
+		KalmanFilterWithControl kf = new KalmanFilterWithControl();
 		DenseMatrix64F F = new DenseMatrix64F(new double[][]{
 			{1.0, DT },
-			{0.0, 1.0},
+			{0.0, 0.0}, // base the yaw rate estimate entirely on the controls
 		}); // The system dynamics model, S. Levy's tutorial calls this A
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
 			{YAW_PROCESS_NOISE_MAGNITUDE_RAD * 0.25, 0.0},
 			{0.0, YAW_RATE_PROCESS_NOISE_MAGNITUDE_RAD_S * 0.25},
-		}); // Noise covariance, must be estimated or ignored.  S. Levy's tutorial lacks this term, but it's added to the system dynamics model each predict step
+		}); // Noise covariance, must be estimated or ignored.
 		DenseMatrix64F H = new DenseMatrix64F(new double[][]{
 			{1.0, 0.0},
 			{0.0, 1.0},
 		}); // Maps observations to state variables - S. Levy's tutorial calls this C
+		DenseMatrix64F B = new DenseMatrix64F(new double[][]{
+			{0.0, 0.0},
+			{MAX_VEHICLE_PIVOT_RATE_RAD_PER_S / 2, -MAX_VEHICLE_PIVOT_RATE_RAD_PER_S / 2}, // Full-scale inputs are [1.0, -1.0], hence the halving 
+		}); // Maps controls to state variables
 		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
 			{YAW_MEASUREMENT_NOISE_MAGNITUDE_RAD * 0.5, 0.0},
 			{0.0, YAW_RATE_MEASUREMENT_NOISE_MAGNITUDE_RAD_PER_S * 0.5},
 		}); // Sensor value variance/covariance.  This is a fake estimate for now.
-		kf.configure(F, Q, H);
+		kf.configure(F, Q, H, B);
 		
 		// Run filter
 		DenseMatrix64F x_init = new DenseMatrix64F(new double [][]{
@@ -747,7 +751,11 @@ public class AttitudeTrackerTests {
 				{yaw_measured[i]},
 				{yaw_rate_measured[i]},
 			});
-			kf.predict();
+			DenseMatrix64F u = new DenseMatrix64F(new double [][]{
+				{left_wheel_speed [i]},
+				{right_wheel_speed[i]},
+			});
+			kf.predict(u);
 			double yaw_prediction = kf.getState().data[0];
 			double yaw_rate_prediction = kf.getState().data[1];
 			kf.update(z, R);
