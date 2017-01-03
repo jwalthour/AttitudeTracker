@@ -642,9 +642,12 @@ public class AttitudeTrackerTests {
 		 * - Pivots right for 2s
 		 * - Drives straight for 1s
 		 * - Curves left for 3s
+		 * - Drives straight back for 1s
+		 * - Tries to pivot for 2s but the robot is held fixed in place
+		 * - Drives straight forward for 5s
 		 */
 		// Shadow some of the default values
-		final int NUM_DATAPOINTS = (int)((1+2+1+3) / DT);
+		final int NUM_DATAPOINTS = (int)((1+2+1+3+1+2+5) / DT);
 		final double MAX_VEHICLE_PIVOT_RATE_RAD_PER_S = Math.PI;
 		final double YAW_PROCESS_NOISE_MAGNITUDE_RAD = 5 * Math.PI / 180;
 		final double YAW_RATE_PROCESS_NOISE_MAGNITUDE_RAD_S = 5 * Math.PI / 180;
@@ -673,6 +676,7 @@ public class AttitudeTrackerTests {
 		for(int i = 0; i < NUM_DATAPOINTS; ++i) {
 			time[i] = i * DT;
 			boolean moving = true;
+			boolean wheels_slipping = false;
 			if(time[i] < 1.0) {
 				// Sit still to start out
 				moving = false;
@@ -687,14 +691,30 @@ public class AttitudeTrackerTests {
 				// Go straight
 				left_wheel_speed [i] = +1.0;
 				right_wheel_speed[i] = +1.0;
-			} else  {
+			} else if(time[i] < 8.0) {
 				// Curve left
 				left_wheel_speed [i] =  0.0;
+				right_wheel_speed[i] = +1.0;
+			} else if(time[i] < 9.0) {
+				// Straight back
+				left_wheel_speed [i] = -1.0;
+				right_wheel_speed[i] = -1.0;
+			} else if(time[i] < 11.0) {
+				// Get stuck trying to turn
+				wheels_slipping = true;
+				yaw_rate_ideal[i] = 0;
+				left_wheel_speed [i] = -1.0;
+				right_wheel_speed[i] = +1.0;
+			} else if(time[i] < 16.0) {
+				// Straight forward
+				left_wheel_speed [i] = +1.0;
 				right_wheel_speed[i] = +1.0;
 			}
 			
 			// Compute turning equation
-			yaw_rate_ideal[i] = MAX_VEHICLE_PIVOT_RATE_RAD_PER_S * (left_wheel_speed[i] - right_wheel_speed[i]) / 2;
+			if(!wheels_slipping) {
+				yaw_rate_ideal[i] = MAX_VEHICLE_PIVOT_RATE_RAD_PER_S * (left_wheel_speed[i] - right_wheel_speed[i]) / 2;
+			}
 			double yaw = (i == 0)? 0 : yaw_ideal[i - 1];
 			yaw_ideal[i] = yaw + yaw_rate_ideal[i] * DT;
 			
