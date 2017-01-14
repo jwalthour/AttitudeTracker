@@ -1009,15 +1009,15 @@ public class AttitudeTrackerTests {
 		double[] t_demod     = new double[NUM_DATAPOINTS];
 		double[] w_measured  = new double[NUM_DATAPOINTS];
 		double[] w_estimated = new double[NUM_DATAPOINTS];
+		double[] k = new double[NUM_DATAPOINTS];
+		double[] p = new double[NUM_DATAPOINTS];
 		
-		
-
 		// Configure filters
 		ScalarKalmanFilter pos_kf = new ScalarKalmanFilter();
-		ScalarKalmanFilter vel_kf = new ScalarKalmanFilter();
-		//kf.configure(1, 0, 1); // defaults are safe
-		pos_kf.setState(0);		
-		vel_kf.setState(0);		
+//		ScalarKalmanFilter vel_kf = new ScalarKalmanFilter();
+		pos_kf.configure(1, 0.05, 1); // defaults are safe
+		pos_kf.setState(2);		
+//		vel_kf.setState(0);		
 		
 		int i = 0;
 		try {
@@ -1041,13 +1041,14 @@ public class AttitudeTrackerTests {
 				time[i] = i * DT;
 				
 				pos_kf.predict();
-				vel_kf.predict();
-				pos_kf.update(t_demod[i], 0.01);
-				vel_kf.update(w_measured[i], 0.01);
+//				vel_kf.predict();
+				pos_kf.update(t_demod[i], 10);
+//				vel_kf.update(w_measured[i], 0.01);
 				
 				t_estimated[i] = pos_kf.getState();
-				w_estimated[i] = vel_kf.getState();
-				
+//				w_estimated[i] = vel_kf.getState();
+				k[i] = pos_kf.getK();
+				p[i] = pos_kf.getP();
 				++i;
 			}
 		} catch (IOException e) {
@@ -1059,19 +1060,25 @@ public class AttitudeTrackerTests {
 		// Graph results
 		XYSeries x_m_s = new XYSeries("Measured position");
 		XYSeries x_e_s = new XYSeries("Estimated position");
-		XYSeries v_m_s = new XYSeries("Measured speed");
-		XYSeries v_e_s = new XYSeries("Estimated speed");
+		XYSeries k_s = new XYSeries("k");
+		XYSeries p_s = new XYSeries("p");
+//		XYSeries v_m_s = new XYSeries("Measured speed");
+//		XYSeries v_e_s = new XYSeries("Estimated speed");
 		for(i = 0; i < NUM_DATAPOINTS; ++i) {
 			x_m_s.add(time[i], t_demod[i]);
 			x_e_s.add(time[i], t_estimated[i]);
-			v_m_s.add(time[i], w_measured[i]);
-			v_e_s.add(time[i], w_estimated[i]);
+			k_s.add(time[i], k[i] * 10);
+			p_s.add(time[i], p[i] * 10);
+//			v_m_s.add(time[i], w_measured[i]);
+//			v_e_s.add(time[i], w_estimated[i]);
 		}
 		XYSeriesCollection sc = new XYSeriesCollection();
 		sc.addSeries(x_e_s);
 		sc.addSeries(x_m_s);
-		sc.addSeries(v_e_s);
-		sc.addSeries(v_m_s);
+		sc.addSeries(k_s);
+		sc.addSeries(p_s);
+//		sc.addSeries(v_e_s);
+//		sc.addSeries(v_m_s);
 		
 		JFreeChart chart = ChartFactory.createXYLineChart("Scalar KF test", "Time (s)", "Value", sc);
 		

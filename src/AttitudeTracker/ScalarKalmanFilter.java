@@ -2,7 +2,7 @@ package AttitudeTracker;
 
 public class ScalarKalmanFilter {
 	private double f = 1, q = 0, h = 1, b = 0;
-	private double x, p = 1;
+	private double x, p = 1, k; // k is only here for debugging
 	
 	public void configure(double f, double q, double h, double b) {
 		this.f = f;
@@ -28,11 +28,14 @@ public class ScalarKalmanFilter {
 		double y = z - h * x;
 		double s = h * p * h + r;
 		
-		double k = p * h / s;
+		k = p * h / s;
 		x = x + k * y;
 		p = (1 - h * k) * p;
 	}
 	
 	public double getState() { return x; }
 	public void   setState(double x) { this.x = x; }
+	
+	public double getP() { return p; }
+	public double getK() { return k; }
 }
