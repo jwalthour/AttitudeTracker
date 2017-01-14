@@ -60,7 +60,8 @@ public class AttitudeTrackerTests {
 //		testSpeedKfWithSyntheticData(false);
 //		testAccelKfWithSyntheticData(false);
 //		testUnmeasuredAccelKfWithSyntheticData(true);
-		testTankSteerWithoutControl(true);
+//		testTankSteerWithControl(true);
+		testKfWithRecordedData(true);
 	}
 	
 	/**
@@ -636,7 +637,7 @@ public class AttitudeTrackerTests {
 	 * Simulate a tank-drive robot
 	 * 
 	 */
-	public static void testTankSteerWithoutControl(boolean terminateAfter) {
+	public static void testTankSteerWithControl(boolean terminateAfter) {
 		// Generate simulated sensor data for a robot that:
 		/* - Sits still for 1s
 		 * - Pivots right for 2s
@@ -735,7 +736,7 @@ public class AttitudeTrackerTests {
 		KalmanFilterWithControl kf = new KalmanFilterWithControl();
 		DenseMatrix64F F = new DenseMatrix64F(new double[][]{
 			{1.0, DT },
-			{0.0, 0.0}, // base the yaw rate estimate entirely on the controls
+			{0.0,0.9}, // base the yaw rate estimate entirely on the controls
 		}); // The system dynamics model, S. Levy's tutorial calls this A
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
 			{YAW_PROCESS_NOISE_MAGNITUDE_RAD * 0.25, 0.0},
@@ -747,7 +748,7 @@ public class AttitudeTrackerTests {
 		}); // Maps observations to state variables - S. Levy's tutorial calls this C
 		DenseMatrix64F B = new DenseMatrix64F(new double[][]{
 			{0.0, 0.0},
-			{MAX_VEHICLE_PIVOT_RATE_RAD_PER_S / 2, -MAX_VEHICLE_PIVOT_RATE_RAD_PER_S / 2}, // Full-scale inputs are [1.0, -1.0], hence the halving 
+			{0.1, -0.1}, // Effect on each state variable for each control input
 		}); // Maps controls to state variables
 		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
 			{YAW_MEASUREMENT_NOISE_MAGNITUDE_RAD * 0.5, 0.0},
@@ -867,11 +868,79 @@ public class AttitudeTrackerTests {
         dialog.setVisible(true);        
 	}
 
-	public static void testAttitudeTrackerWithSyntheticData() {
+	public static void testKfWithRecordedData(boolean terminateAfter) {
+		CSVParser parser = null;
+		try {
+			parser = new CSVParser(new FileReader("2017-1-13 IMU sensor data with corrections - Kovaka.csv"), CSVFormat.DEFAULT);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
+		final int NUM_DATAPOINTS = 7162;
+		// t for Theta, the heading to magnetic north
+		// w for lowercase omega, angular velocity
+		double[] time        = new double[NUM_DATAPOINTS];
+		double[] t_measured  = new double[NUM_DATAPOINTS];
+		double[] t_estimated = new double[NUM_DATAPOINTS];
+		double[] t_demod     = new double[NUM_DATAPOINTS];
+		double[] w_measured  = new double[NUM_DATAPOINTS];
+		double[] w_estimated = new double[NUM_DATAPOINTS];
+		int i = 0;
+		try {
+			// I deep-sixed the column headers, they were:
+			// X,Y,Z,gX,gY,gZ,Hard Fe Y a=-36,Hard Fe Z ß=-221.5
+			final int COL_CORR_MAG_Y = 6;
+			final int COL_CORR_MAG_Z = 7;
+			final int COL_GYRO_Z = 5;
+			double heading_boost = 0.0;
+			for(CSVRecord record : parser.getRecords()) {
+				t_measured[i] = Math.atan2(Double.parseDouble(record.get(COL_CORR_MAG_Y)), Double.parseDouble(record.get(COL_CORR_MAG_Z)));
+				w_measured[i] = Double.parseDouble(record.get(COL_GYRO_Z)) * Math.PI / 180.0;
+				if((i > 0) && (
+						(t_measured[i] >  Math.PI / 2.0 && t_measured[i - 1] < -Math.PI / 2.0) ||
+						(t_measured[i] < -Math.PI / 2.0 && t_measured[i - 1] >  Math.PI / 2.0)
+						 )) {
+					// Defunct the modulo
+					heading_boost += 2 * Math.PI;
+				}
+				t_demod[i] = t_measured[i] + heading_boost;
+				time[i] = i * DT;
+				++i;
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	
+		
+		// Graph results
+		XYSeries x_m_s = new XYSeries("Measured position");
+		XYSeries x_e_s = new XYSeries("Estimated position");
+		XYSeries v_m_s = new XYSeries("Measured speed");
+		XYSeries v_e_s = new XYSeries("Estimated speed");
+		for(i = 0; i < NUM_DATAPOINTS; ++i) {
+			x_m_s.add(time[i], t_demod[i]);
+			x_e_s.add(time[i], t_estimated[i]);
+			v_m_s.add(time[i], w_measured[i]);
+			v_e_s.add(time[i], w_estimated[i]);
+		}
+		XYSeriesCollection sc = new XYSeriesCollection();
+		sc.addSeries(x_e_s);
+		sc.addSeries(x_m_s);
+		sc.addSeries(v_e_s);
+		sc.addSeries(v_m_s);
+		
+		JFreeChart chart = ChartFactory.createXYLineChart("Speed KF test", "Time (s)", "Value", sc);
+		
+		showChart(chart, terminateAfter);
+
 	}
-	public static void testAttitudeTrackerWithRecordedData() {
+	
+	public static void testAttitudeTrackerWithRecordedData(boolean terminateAfter) {
 
 		CSVParser parser;
 		try {
