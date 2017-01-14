@@ -61,7 +61,7 @@ public class AttitudeTrackerTests {
 //		testAccelKfWithSyntheticData(false);
 //		testUnmeasuredAccelKfWithSyntheticData(true);
 //		testTankSteerWithControl(true);
-		testKfWithRecordedData(true);
+		testScalarKfWithRecordedData(true);
 	}
 	
 	/**
@@ -889,6 +889,41 @@ public class AttitudeTrackerTests {
 		double[] t_demod     = new double[NUM_DATAPOINTS];
 		double[] w_measured  = new double[NUM_DATAPOINTS];
 		double[] w_estimated = new double[NUM_DATAPOINTS];
+		
+		
+
+		// Configure filter
+		KalmanFilterSimple kf = new KalmanFilterSimple();
+		DenseMatrix64F F = new DenseMatrix64F(new double[][]{
+			{1.0, 0.0},
+			{0.0, 1.0},
+		}); // The system dynamics model, S. Levy's tutorial calls this A
+		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
+			{1.0, 0.0},
+			{0.0, 1.0},
+		}); // Noise covariance, must be estimated or ignored.  S. Levy's tutorial lacks this term, but it's added to the system dynamics model each predict step
+		DenseMatrix64F H = new DenseMatrix64F(new double[][]{
+			{1.0, 0.0},
+			{0.0, 1.0},
+		}); // Maps observations to state variables - S. Levy's tutorial calls this C
+		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
+			{0.0, 0.0},
+			{0.0, 0.0},
+		}); // Sensor value variance/covariance.  This is a fake estimate for now.
+		kf.configure(F, Q, H);
+		
+		// Run filter
+		DenseMatrix64F x_init = new DenseMatrix64F(new double [][]{
+			{0},
+			{0},
+		}); // Cheating a little here with an accurate initial estimate
+		DenseMatrix64F p_init = new DenseMatrix64F(new double [][]{
+			{1, 0},
+			{0, 1},
+		}); // Arbitrary at the moment
+		kf.setState(x_init, p_init);
+		
+		
 		int i = 0;
 		try {
 			// I deep-sixed the column headers, they were:
@@ -909,6 +944,19 @@ public class AttitudeTrackerTests {
 				}
 				t_demod[i] = t_measured[i] + heading_boost;
 				time[i] = i * DT;
+				
+				DenseMatrix64F z = new DenseMatrix64F(new double [][]{
+					{t_demod[i]},
+					{w_measured[i]},
+				});
+				kf.predict();
+				double x_prediction = kf.getState().data[0];
+				double v_prediction = kf.getState().data[1];
+				kf.update(z, R);
+				t_estimated[i] = kf.getState().data[0];
+				w_estimated[i] = kf.getState().data[1];
+
+				
 				++i;
 			}
 		} catch (IOException e) {
@@ -935,6 +983,97 @@ public class AttitudeTrackerTests {
 		sc.addSeries(v_m_s);
 		
 		JFreeChart chart = ChartFactory.createXYLineChart("Speed KF test", "Time (s)", "Value", sc);
+		
+		showChart(chart, terminateAfter);
+
+	}
+
+	public static void testScalarKfWithRecordedData(boolean terminateAfter) {
+		CSVParser parser = null;
+		try {
+			parser = new CSVParser(new FileReader("2017-1-13 IMU sensor data with corrections - Kovaka.csv"), CSVFormat.DEFAULT);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		final int NUM_DATAPOINTS = 7162;
+		// t for Theta, the heading to magnetic north
+		// w for lowercase omega, angular velocity
+		double[] time        = new double[NUM_DATAPOINTS];
+		double[] t_measured  = new double[NUM_DATAPOINTS];
+		double[] t_estimated = new double[NUM_DATAPOINTS];
+		double[] t_demod     = new double[NUM_DATAPOINTS];
+		double[] w_measured  = new double[NUM_DATAPOINTS];
+		double[] w_estimated = new double[NUM_DATAPOINTS];
+		
+		
+
+		// Configure filters
+		ScalarKalmanFilter pos_kf = new ScalarKalmanFilter();
+		ScalarKalmanFilter vel_kf = new ScalarKalmanFilter();
+		//kf.configure(1, 0, 1); // defaults are safe
+		pos_kf.setState(0);		
+		vel_kf.setState(0);		
+		
+		int i = 0;
+		try {
+			// I deep-sixed the column headers, they were:
+			// X,Y,Z,gX,gY,gZ,Hard Fe Y a=-36,Hard Fe Z ß=-221.5
+			final int COL_CORR_MAG_Y = 6;
+			final int COL_CORR_MAG_Z = 7;
+			final int COL_GYRO_Z = 5;
+			double heading_boost = 0.0;
+			for(CSVRecord record : parser.getRecords()) {
+				t_measured[i] = Math.atan2(Double.parseDouble(record.get(COL_CORR_MAG_Y)), Double.parseDouble(record.get(COL_CORR_MAG_Z)));
+				w_measured[i] = Double.parseDouble(record.get(COL_GYRO_Z)) * Math.PI / 180.0;
+				if((i > 0) && (
+						(t_measured[i] >  Math.PI / 2.0 && t_measured[i - 1] < -Math.PI / 2.0) ||
+						(t_measured[i] < -Math.PI / 2.0 && t_measured[i - 1] >  Math.PI / 2.0)
+						 )) {
+					// Defunct the modulo
+					heading_boost += 2 * Math.PI;
+				}
+				t_demod[i] = t_measured[i] + heading_boost;
+				time[i] = i * DT;
+				
+				pos_kf.predict();
+				vel_kf.predict();
+				pos_kf.update(t_demod[i], 0.01);
+				vel_kf.update(w_measured[i], 0.01);
+				
+				t_estimated[i] = pos_kf.getState();
+				w_estimated[i] = vel_kf.getState();
+				
+				++i;
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	
+		
+		// Graph results
+		XYSeries x_m_s = new XYSeries("Measured position");
+		XYSeries x_e_s = new XYSeries("Estimated position");
+		XYSeries v_m_s = new XYSeries("Measured speed");
+		XYSeries v_e_s = new XYSeries("Estimated speed");
+		for(i = 0; i < NUM_DATAPOINTS; ++i) {
+			x_m_s.add(time[i], t_demod[i]);
+			x_e_s.add(time[i], t_estimated[i]);
+			v_m_s.add(time[i], w_measured[i]);
+			v_e_s.add(time[i], w_estimated[i]);
+		}
+		XYSeriesCollection sc = new XYSeriesCollection();
+		sc.addSeries(x_e_s);
+		sc.addSeries(x_m_s);
+		sc.addSeries(v_e_s);
+		sc.addSeries(v_m_s);
+		
+		JFreeChart chart = ChartFactory.createXYLineChart("Scalar KF test", "Time (s)", "Value", sc);
 		
 		showChart(chart, terminateAfter);
 
