@@ -61,7 +61,7 @@ public class AttitudeTrackerTests {
 //		testAccelKfWithSyntheticData(false);
 //		testUnmeasuredAccelKfWithSyntheticData(true);
 //		testTankSteerWithControl(true);
-		testScalarKfWithRecordedData(true);
+		testKfWithRecordedData(true);
 	}
 	
 	/**
@@ -899,7 +899,7 @@ public class AttitudeTrackerTests {
 			{0.0, 1.0},
 		}); // The system dynamics model, S. Levy's tutorial calls this A
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
-			{1.0, 0.0},
+			{0.05, 0.0},
 			{0.0, 1.0},
 		}); // Noise covariance, must be estimated or ignored.  S. Levy's tutorial lacks this term, but it's added to the system dynamics model each predict step
 		DenseMatrix64F H = new DenseMatrix64F(new double[][]{
@@ -907,14 +907,14 @@ public class AttitudeTrackerTests {
 			{0.0, 1.0},
 		}); // Maps observations to state variables - S. Levy's tutorial calls this C
 		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
-			{0.0, 0.0},
+			{10.0, 0.0},
 			{0.0, 0.0},
 		}); // Sensor value variance/covariance.  This is a fake estimate for now.
 		kf.configure(F, Q, H);
 		
 		// Run filter
 		DenseMatrix64F x_init = new DenseMatrix64F(new double [][]{
-			{0},
+			{2.0},
 			{0},
 		}); // Cheating a little here with an accurate initial estimate
 		DenseMatrix64F p_init = new DenseMatrix64F(new double [][]{
@@ -1015,7 +1015,7 @@ public class AttitudeTrackerTests {
 		// Configure filters
 		ScalarKalmanFilter pos_kf = new ScalarKalmanFilter();
 //		ScalarKalmanFilter vel_kf = new ScalarKalmanFilter();
-		pos_kf.configure(1, 0.05, 1); // defaults are safe
+		pos_kf.configure(1, 0.05, 1);
 		pos_kf.setState(2);		
 //		vel_kf.setState(0);		
 		
