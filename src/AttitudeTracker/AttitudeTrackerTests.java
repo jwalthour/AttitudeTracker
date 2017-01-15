@@ -887,40 +887,50 @@ public class AttitudeTrackerTests {
 		double[] t_measured  = new double[NUM_DATAPOINTS];
 		double[] t_estimated = new double[NUM_DATAPOINTS];
 		double[] t_demod     = new double[NUM_DATAPOINTS];
+		double[] d_theta     = new double[NUM_DATAPOINTS];
 		double[] w_measured  = new double[NUM_DATAPOINTS];
 		double[] w_estimated = new double[NUM_DATAPOINTS];
 		
 		
 
-		// Configure filter
+		// Configure filter.
+		// State vector (n = 2): 
+		// [ position (theta, t) ]
+		// [ angular speed (omega, w) ]
+		// Sensor vector (m = 3):
+		// [ magnetometer theta ]
+		// [ d(magnetometer theta) ]
+		// [ gyro angular speed ] 
 		KalmanFilterSimple kf = new KalmanFilterSimple();
 		DenseMatrix64F F = new DenseMatrix64F(new double[][]{
-			{1.0, 0.0},
+			{1.0, DT},
 			{0.0, 1.0},
-		}); // The system dynamics model, S. Levy's tutorial calls this A
+		}); 
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
 			{0.05, 0.0},
-			{0.0, 1.0},
-		}); // Noise covariance, must be estimated or ignored.  S. Levy's tutorial lacks this term, but it's added to the system dynamics model each predict step
+			{0.0,  1.0},
+		}); 
 		DenseMatrix64F H = new DenseMatrix64F(new double[][]{
 			{1.0, 0.0},
 			{0.0, 1.0},
-		}); // Maps observations to state variables - S. Levy's tutorial calls this C
+			{0.0, 1.0},
+		}); 
 		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
-			{10.0, 0.0},
-			{0.0, 0.0},
-		}); // Sensor value variance/covariance.  This is a fake estimate for now.
+			{10.0, 0.0, 0.0},
+			{ 0.0, 10.0, 0.0},
+			{ 0.0, 0.0, 0.0},
+		}); 
 		kf.configure(F, Q, H);
 		
 		// Run filter
 		DenseMatrix64F x_init = new DenseMatrix64F(new double [][]{
 			{2.0},
 			{0},
-		}); // Cheating a little here with an accurate initial estimate
+		}); 
 		DenseMatrix64F p_init = new DenseMatrix64F(new double [][]{
 			{1, 0},
 			{0, 1},
-		}); // Arbitrary at the moment
+		}); 
 		kf.setState(x_init, p_init);
 		
 		
@@ -944,10 +954,21 @@ public class AttitudeTrackerTests {
 				}
 				t_demod[i] = t_measured[i] + heading_boost;
 				time[i] = i * DT;
+				// In this case we've been sampling the magnetometer faster than it updates.
+				// The estimate has an update every timepoint, so there aren't zeroes most of
+				// the samples.  The downfall is a 1-sample lag.
+				d_theta[i] = i>1? t_estimated[i - 1] - t_estimated[i - 2] : 0;
+//				d_theta[i] = i>0? t_demod[i] - t_demod[i - 1] : 0;
+				
+				// The above computes the change over one dt, while the units of w are in rad/s
+				// We didn't measure the dt in the data capture.  So here we approximate dividing by that dt.
+				d_theta[i] *= 250;
 				
 				DenseMatrix64F z = new DenseMatrix64F(new double [][]{
 					{t_demod[i]},
-					{w_measured[i]},
+					{d_theta[i]},
+					{0.0},
+//					{w_measured[i]},
 				});
 				kf.predict();
 				double x_prediction = kf.getState().data[0];
@@ -956,7 +977,6 @@ public class AttitudeTrackerTests {
 				t_estimated[i] = kf.getState().data[0];
 				w_estimated[i] = kf.getState().data[1];
 
-				
 				++i;
 			}
 		} catch (IOException e) {
@@ -968,21 +988,24 @@ public class AttitudeTrackerTests {
 		// Graph results
 		XYSeries x_m_s = new XYSeries("Measured position");
 		XYSeries x_e_s = new XYSeries("Estimated position");
+		XYSeries d_m_s = new XYSeries("Change in position");
 		XYSeries v_m_s = new XYSeries("Measured speed");
 		XYSeries v_e_s = new XYSeries("Estimated speed");
 		for(i = 0; i < NUM_DATAPOINTS; ++i) {
 			x_m_s.add(time[i], t_demod[i]);
 			x_e_s.add(time[i], t_estimated[i]);
+			d_m_s.add(time[i], d_theta[i]);
 			v_m_s.add(time[i], w_measured[i]);
 			v_e_s.add(time[i], w_estimated[i]);
 		}
 		XYSeriesCollection sc = new XYSeriesCollection();
 		sc.addSeries(x_e_s);
 		sc.addSeries(x_m_s);
+		sc.addSeries(d_m_s);
 		sc.addSeries(v_e_s);
 		sc.addSeries(v_m_s);
 		
-		JFreeChart chart = ChartFactory.createXYLineChart("Speed KF test", "Time (s)", "Value", sc);
+		JFreeChart chart = ChartFactory.createXYLineChart("KF test w/rec data", "Time (s)", "Value", sc);
 		
 		showChart(chart, terminateAfter);
 
