@@ -903,7 +903,7 @@ public class AttitudeTrackerTests {
 		// [ gyro angular speed ] 
 		KalmanFilterSimple kf = new KalmanFilterSimple();
 		DenseMatrix64F F = new DenseMatrix64F(new double[][]{
-			{1.0, DT},
+			{1.0, DT * 0.01},
 			{0.0, 1.0},
 		}); 
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
@@ -917,7 +917,7 @@ public class AttitudeTrackerTests {
 		}); 
 		DenseMatrix64F R = new DenseMatrix64F(new double[][]{
 			{10.0, 0.0, 0.0},
-			{ 0.0, 10.0, 0.0},
+			{ 0.0, 1.0, 0.0},
 			{ 0.0, 0.0, 0.0},
 		}); 
 		kf.configure(F, Q, H);
@@ -967,8 +967,8 @@ public class AttitudeTrackerTests {
 				DenseMatrix64F z = new DenseMatrix64F(new double [][]{
 					{t_demod[i]},
 					{d_theta[i]},
-					{0.0},
-//					{w_measured[i]},
+//					{0.0},
+					{w_measured[i]},
 				});
 				kf.predict();
 				double x_prediction = kf.getState().data[0];
