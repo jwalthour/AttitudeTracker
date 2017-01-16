@@ -887,6 +887,7 @@ public class AttitudeTrackerTests {
 		double[] t_measured  = new double[NUM_DATAPOINTS];
 		double[] t_estimated = new double[NUM_DATAPOINTS];
 		double[] t_demod     = new double[NUM_DATAPOINTS];
+		double   t_cum_err   = 0;
 		double[] d_theta     = new double[NUM_DATAPOINTS];
 		double[] w_measured  = new double[NUM_DATAPOINTS];
 		double[] w_estimated = new double[NUM_DATAPOINTS];
@@ -903,7 +904,7 @@ public class AttitudeTrackerTests {
 		// [ gyro angular speed ] 
 		KalmanFilterSimple kf = new KalmanFilterSimple();
 		DenseMatrix64F F = new DenseMatrix64F(new double[][]{
-			{1.0, DT * 0.01},
+			{1.0, DT / 45},
 			{0.0, 1.0},
 		}); 
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
@@ -977,12 +978,17 @@ public class AttitudeTrackerTests {
 				t_estimated[i] = kf.getState().data[0];
 				w_estimated[i] = kf.getState().data[1];
 
+				// This should eventually add up to zero
+				t_cum_err += (t_estimated[i] - t_demod[i]);
+				
 				++i;
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+		System.out.println("Cumulative error: " + t_cum_err);
 	
 		
 		// Graph results
