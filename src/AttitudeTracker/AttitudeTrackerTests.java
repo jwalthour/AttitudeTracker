@@ -869,16 +869,7 @@ public class AttitudeTrackerTests {
 	}
 
 	public static void testKfWithRecordedData(boolean terminateAfter) {
-		CSVParser parser = null;
-		try {
-			parser = new CSVParser(new FileReader("2017-1-13 IMU sensor data with corrections - Kovaka.csv"), CSVFormat.DEFAULT);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		CsvDataPlayer player = new CsvDataPlayer("2017-1-13 IMU sensor data with corrections - Kovaka.csv", 6, 7, 5);
 		
 		final int NUM_DATAPOINTS = 7162;
 		// t for Theta, the heading to magnetic north
@@ -936,56 +927,45 @@ public class AttitudeTrackerTests {
 		
 		
 		int i = 0;
-		try {
-			// I deep-sixed the column headers, they were:
-			// X,Y,Z,gX,gY,gZ,Hard Fe Y a=-36,Hard Fe Z ß=-221.5
-			final int COL_CORR_MAG_Y = 6;
-			final int COL_CORR_MAG_Z = 7;
-			final int COL_GYRO_Z = 5;
-			double heading_boost = 0.0;
-			for(CSVRecord record : parser.getRecords()) {
-				t_measured[i] = Math.atan2(Double.parseDouble(record.get(COL_CORR_MAG_Y)), Double.parseDouble(record.get(COL_CORR_MAG_Z)));
-				w_measured[i] = Double.parseDouble(record.get(COL_GYRO_Z)) * Math.PI / 180.0;
-				if((i > 0) && (
-						(t_measured[i] >  Math.PI / 2.0 && t_measured[i - 1] < -Math.PI / 2.0) ||
-						(t_measured[i] < -Math.PI / 2.0 && t_measured[i - 1] >  Math.PI / 2.0)
-						 )) {
-					// Defunct the modulo
-					heading_boost += 2 * Math.PI;
-				}
-				t_demod[i] = t_measured[i] + heading_boost;
-				time[i] = i * DT;
-				// In this case we've been sampling the magnetometer faster than it updates.
-				// The estimate has an update every timepoint, so there aren't zeroes most of
-				// the samples.  The downfall is a 1-sample lag.
-				d_theta[i] = i>1? t_estimated[i - 1] - t_estimated[i - 2] : 0;
-//				d_theta[i] = i>0? t_demod[i] - t_demod[i - 1] : 0;
-				
-				// The above computes the change over one dt, while the units of w are in rad/s
-				// We didn't measure the dt in the data capture.  So here we approximate dividing by that dt.
-				d_theta[i] *= 250;
-				
-				DenseMatrix64F z = new DenseMatrix64F(new double [][]{
-					{t_demod[i]},
-					{d_theta[i]},
-//					{0.0},
-					{w_measured[i]},
-				});
-				kf.predict();
-				double x_prediction = kf.getState().data[0];
-				double v_prediction = kf.getState().data[1];
-				kf.update(z, R);
-				t_estimated[i] = kf.getState().data[0];
-				w_estimated[i] = kf.getState().data[1];
-
-				// This should eventually add up to zero
-				t_cum_err += (t_estimated[i] - t_demod[i]);
-				
-				++i;
+		double heading_boost = 0.0;
+		while(player.hasMoreData()) {
+			t_measured[i] = player.getHeading();
+			w_measured[i] = player.getW();
+			if((i > 0) && (
+					(t_measured[i] >  Math.PI / 2.0 && t_measured[i - 1] < -Math.PI / 2.0) ||
+					(t_measured[i] < -Math.PI / 2.0 && t_measured[i - 1] >  Math.PI / 2.0)
+					 )) {
+				// Defunct the modulo
+				heading_boost += 2 * Math.PI;
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			t_demod[i] = t_measured[i] + heading_boost;
+			time[i] = player.getTime();
+			// In this case we've been sampling the magnetometer faster than it updates.
+			// The estimate has an update every timepoint, so there aren't zeroes most of
+			// the samples.  The downfall is a 1-sample lag.
+			d_theta[i] = i>1? t_estimated[i - 1] - t_estimated[i - 2] : 0;
+//				d_theta[i] = i>0? t_demod[i] - t_demod[i - 1] : 0;
+			
+			// The above computes the change over one dt, while the units of w are in rad/s
+			// We didn't measure the dt in the data capture.  So here we approximate dividing by that dt.
+			d_theta[i] *= 250;
+			
+			DenseMatrix64F z = new DenseMatrix64F(new double [][]{
+				{t_demod[i]},
+				{d_theta[i]},
+				{w_measured[i]},
+			});
+			kf.predict();
+			double x_prediction = kf.getState().data[0];
+			double v_prediction = kf.getState().data[1];
+			kf.update(z, R);
+			t_estimated[i] = kf.getState().data[0];
+			w_estimated[i] = kf.getState().data[1];
+
+			// This should eventually add up to zero
+			t_cum_err += (t_estimated[i] - t_demod[i]);
+			
+			++i;
 		}
 		
 		System.out.println("Cumulative error: " + t_cum_err);
