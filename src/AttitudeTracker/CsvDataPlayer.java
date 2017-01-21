@@ -38,12 +38,9 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 		csvColRotationRate  = col_rotation_rates;
 	}
 	
-	private void getNextRecordIfNecessary() {
-		numReadingsTakenThisRecord++;
-		if(numReadingsTakenThisRecord >= READINGS_PER_RECORD) {
-			if(++curRecord >= csvRecords.size()) {
-				 curRecord  = csvRecords.size() - 1;
-			}
+	public void advancePlayback() {
+		if(++curRecord >= csvRecords.size()) {
+			 curRecord  = csvRecords.size() - 1;
 		}
 	}
 	
@@ -53,25 +50,19 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 
 	@Override
 	public double getTime() {
-		double retVal = curRecord * 0.2; // TODO: actual time
-		getNextRecordIfNecessary();
-		return retVal;
+		return curRecord * 0.1; // TODO: actual time
 	}
 
 	@Override
 	public double getW() {
-		double retVal = Double.parseDouble(csvRecords.get(curRecord).get(csvColRotationRate)) * Math.PI / 180.0;
-		getNextRecordIfNecessary();
-		return retVal;
+		return Double.parseDouble(csvRecords.get(curRecord).get(csvColRotationRate)) * Math.PI / 180.0;
 	}
 
 	@Override
 	public double getHeading() {
 		double mag_ax_a = Double.parseDouble(csvRecords.get(curRecord).get(csvColMagneticAxisA));
 		double mag_ax_b = Double.parseDouble(csvRecords.get(curRecord).get(csvColMagneticAxisB));
-		double retVal = Math.atan2(mag_ax_a, mag_ax_b);
-		getNextRecordIfNecessary();
-		return retVal;
+		return Math.atan2(mag_ax_a, mag_ax_b);
 	}
 
 }

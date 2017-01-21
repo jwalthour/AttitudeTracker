@@ -4,6 +4,9 @@ import org.ejml.data.DenseMatrix64F;
 
 public class FilteredCompassReader {
 	KalmanFilterSimple kf = new KalmanFilterSimple();
+	HeadingProvider headingProvider = null;
+	HeadingRateProvider headingRateProvider = null;
+	TimeProvider timeProvider = null;
 	double lastUpdateTimestamp;
 	boolean isFirstUpdate = true;
 	double lastMeasuredHeading = 0.0;
@@ -14,8 +17,6 @@ public class FilteredCompassReader {
 	double headingBoost = 0.0;
 	
 	FilteredCompassReader() {
-
-		
 		DenseMatrix64F F =  makeF(0.1); // TODO 
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
 			{0.05, 0.0},
@@ -32,8 +33,24 @@ public class FilteredCompassReader {
 			{ 0.0, 0.0, 0.0},
 		}); 
 		kf.configure(F, Q, H);
+		
+		DenseMatrix64F x_init = new DenseMatrix64F(new double [][]{
+			{0.0},
+			{0.0},
+		}); // Start stationary
+		DenseMatrix64F p_init = new DenseMatrix64F(new double [][]{
+			{1, 0},
+			{0, 1},
+		}); // Arbitrary at the moment
+		kf.setState(x_init, p_init);
 
 		isFirstUpdate = true;
+	}
+	
+	public void setDataSources(HeadingProvider hp, HeadingRateProvider hrp, TimeProvider tp) {
+		headingProvider = hp;
+		headingRateProvider = hrp;
+		timeProvider = tp;
 	}
 	
 	private DenseMatrix64F makeF(double dt) {
@@ -43,24 +60,13 @@ public class FilteredCompassReader {
 		});
 	}
 	
-	// Temporary function for testing outside the robot
-	public double getHeading() {
-		
-		return 0.0;
-	}
-	
-	public double getW() {
-		return 0;
-	}
-	
-//	public double get
 	
 	public void updateEstimate() {
-		double w = 0;//gyro.getZAng();
-		double theta = getHeading();
-		double dt = 0;
+		double w = headingRateProvider.getW();
+		double theta = headingProvider.getHeading();
+		double now = timeProvider.getTime();
 		
-		double now = 0;//Timer.getFPGATimestamp();
+		double dt = 0;
 		if(!isFirstUpdate) 
 		{ dt = now - lastUpdateTimestamp; }
 		updateEstimate(theta, w, dt);
@@ -89,7 +95,7 @@ public class FilteredCompassReader {
 			});
 			kf.setF(makeF(dt));
 			kf.predict();
-			kf.update(null, R);
+			kf.update(z, R);
 			double[] est = kf.getState().getData();
 			lastDTheta = est[0] - lastEstimatedHeading;
 			lastMeasuredHeading = theta_measured;
@@ -99,13 +105,9 @@ public class FilteredCompassReader {
 	}
 	
 	public double getFilteredHeading() {
-		return 0;
+		return lastEstimatedHeading;
 	}
 	public double getFilteredAngularVelocity() {
-		return 0;
-	}
-
-	void main() {
-		System.out.println("Hello cruel world.");
+		return lastEstimatedAngVel;
 	}
 }
