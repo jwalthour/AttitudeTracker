@@ -8,9 +8,9 @@ import java.util.List;
 import org.apache.commons.csv.*;
 
 public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, TimeProvider {
-	int csvColMagneticAxisA = 6;
-	int csvColMagneticAxisB = 7;
-	int csvColRotationRate  = 5;
+	int csvColHeading      = -1;
+	int csvColRotationRate = -1;
+	int csvColTime         = -1;
 	List<CSVRecord> csvRecords = null;
 	// Advance to the next record after all the information has been added
 	int numReadingsTakenThisRecord = 0;
@@ -20,7 +20,7 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 	double thisRecordHeading = 0;
 	double thisRecordRotationRate = 0;
 	
-	CsvDataPlayer(String filename, int col_mag_ax_a, int col_mag_ax_b, int col_rotation_rates) {
+	CsvDataPlayer(String filename, int col_heading, int col_rotation_rate, int col_time) {
 		try {
 			CSVParser csv_parser = new CSVParser(new FileReader(filename), CSVFormat.DEFAULT);
 			csvRecords = csv_parser.getRecords();
@@ -33,9 +33,9 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 			e.printStackTrace();
 		}
 		
-		csvColMagneticAxisA = col_mag_ax_a;
-		csvColMagneticAxisB = col_mag_ax_b;
-		csvColRotationRate  = col_rotation_rates;
+		csvColHeading      = col_heading;
+		csvColRotationRate = col_rotation_rate;
+		csvColTime         = col_time;
 	}
 	
 	public void advancePlayback() {
@@ -50,7 +50,11 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 
 	@Override
 	public double getTime() {
-		return curRecord * 0.1; // TODO: actual time
+		if(csvColTime >= 0) {
+			return Double.parseDouble(csvRecords.get(curRecord).get(csvColTime));
+		} else {
+			return curRecord * 0.1;
+		}
 	}
 
 	@Override
@@ -60,9 +64,7 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 
 	@Override
 	public double getHeading() {
-		double mag_ax_a = Double.parseDouble(csvRecords.get(curRecord).get(csvColMagneticAxisA));
-		double mag_ax_b = Double.parseDouble(csvRecords.get(curRecord).get(csvColMagneticAxisB));
-		return Math.atan2(mag_ax_a, mag_ax_b);
+		return Double.parseDouble(csvRecords.get(curRecord).get(csvColHeading));
 	}
 
 }

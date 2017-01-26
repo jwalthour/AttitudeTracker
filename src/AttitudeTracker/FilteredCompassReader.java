@@ -20,7 +20,7 @@ public class FilteredCompassReader {
 		DenseMatrix64F F =  makeF(0.1); // TODO 
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
 			{0.05, 0.0},
-			{0.0,  1.0},
+			{0.0,  0.0001},
 		}); 
 		DenseMatrix64F H = new DenseMatrix64F(new double[][]{
 			{1.0, 0.0},
@@ -30,7 +30,7 @@ public class FilteredCompassReader {
 		R = new DenseMatrix64F(new double[][]{
 			{10.0, 0.0, 0.0},
 			{ 0.0, 1.0, 0.0},
-			{ 0.0, 0.0, 0.0},
+			{ 0.0, 0.0, 0.001},
 		}); 
 		kf.configure(F, Q, H);
 		

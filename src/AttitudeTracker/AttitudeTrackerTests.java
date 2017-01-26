@@ -296,7 +296,9 @@ public class AttitudeTrackerTests {
 	}
 
 	public static void testKfWithRecordedData(boolean terminateAfter) {
-		CsvDataPlayer player = new CsvDataPlayer("2017-1-13 IMU sensor data with corrections - Kovaka.csv", 6, 7, 5);
+		// CSV columns in "2017-1-19 recording.csv": mag xyz, gyro xyz, corrected heading, time
+		// At this point yz on the magnetometer represent the yaw, and x on the gyro
+		CsvDataPlayer player = new CsvDataPlayer("2017-1-19 recording.csv", 6, 5, 7);
 		FilteredCompassReader frc = new FilteredCompassReader();
 		frc.setDataSources(player, player, player);
 		
