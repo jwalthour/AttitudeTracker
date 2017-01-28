@@ -298,7 +298,7 @@ public class AttitudeTrackerTests {
 	public static void testKfWithRecordedData(boolean terminateAfter) {
 		// CSV columns in "2017-1-19 recording.csv": mag xyz, gyro xyz, corrected heading, time
 		// At this point yz on the magnetometer represent the yaw, and x on the gyro
-		CsvDataPlayer player = new CsvDataPlayer("2017-1-19 recording.csv", 1, 2, -164.0, -25.0, 4, -0.0, 30.0, 7);
+		CsvDataPlayer player = new CsvDataPlayer("2017-1-28 jerky turns.csv", 1, 2, -164.0, -25.0, 4, -0.10, 30.0, 7);
 		FilteredCompassReader frc = new FilteredCompassReader();
 		frc.setDataSources(player, player, player);
 		

@@ -110,7 +110,8 @@ public class FilteredCompassReader {
 	
 	public double getFilteredHeading() {
 		double heading = lastEstimatedHeading % (2 * Math.PI); 
-		if(heading >= Math.PI) { heading -= 2 * Math.PI; }
+		if(heading >=  Math.PI) { heading -= 2 * Math.PI; }
+		if(heading <= -Math.PI) { heading += 2 * Math.PI; }
 		return heading;
 	}
 	public double getFilteredAngularVelocity() {
