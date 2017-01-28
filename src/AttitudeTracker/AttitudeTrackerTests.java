@@ -298,7 +298,7 @@ public class AttitudeTrackerTests {
 	public static void testKfWithRecordedData(boolean terminateAfter) {
 		// CSV columns in "2017-1-19 recording.csv": mag xyz, gyro xyz, corrected heading, time
 		// At this point yz on the magnetometer represent the yaw, and x on the gyro
-		CsvDataPlayer player = new CsvDataPlayer("2017-1-19 recording.csv", 6, 5, 7);
+		CsvDataPlayer player = new CsvDataPlayer("2017-1-19 recording.csv", 1, 2, -164.0, -25.0, 5, 7);
 		FilteredCompassReader frc = new FilteredCompassReader();
 		frc.setDataSources(player, player, player);
 		
@@ -311,46 +311,22 @@ public class AttitudeTrackerTests {
 		double[] t_estimated = new double[NUM_DATAPOINTS];
 		double[] t_demod     = new double[NUM_DATAPOINTS];
 		double   t_cum_err   = 0;
-		double[] d_theta     = new double[NUM_DATAPOINTS];
 		double[] w_measured  = new double[NUM_DATAPOINTS];
 		double[] w_estimated = new double[NUM_DATAPOINTS];
 		
 		
 		int i = 0;
-		double heading_boost = 0;
 		while(player.hasMoreData()) {
-			t_measured[i] = player.getHeading();
+			t_measured[i] = player.getHeading();//+ frc.getHeadingBoost();
 			w_measured[i] = player.getW();
-			if((i > 0) && (
-					(t_measured[i] >  Math.PI / 2.0 && t_measured[i - 1] < -Math.PI / 2.0) ||
-					(t_measured[i] < -Math.PI / 2.0 && t_measured[i - 1] >  Math.PI / 2.0)
-					 )) {
-				// Defunct the modulo
-				heading_boost += 2 * Math.PI;
-			}
-			t_demod[i] = t_measured[i] + heading_boost;
 			time[i] = player.getTime();
-			// In this case we've been sampling the magnetometer faster than it updates.
-			// The estimate has an update every timepoint, so there aren't zeroes most of
-			// the samples.  The downfall is a 1-sample lag.
-			d_theta[i] = i>1? t_estimated[i - 1] - t_estimated[i - 2] : 0;
-//				d_theta[i] = i>0? t_demod[i] - t_demod[i - 1] : 0;
 			
-			// The above computes the change over one dt, while the units of w are in rad/s
-			// We didn't measure the dt in the data capture.  So here we approximate dividing by that dt.
-			d_theta[i] *= 250;
-			
-			DenseMatrix64F z = new DenseMatrix64F(new double [][]{
-				{t_demod[i]},
-				{d_theta[i]},
-				{w_measured[i]},
-			});
 			frc.updateEstimate();
 			t_estimated[i] = frc.getFilteredHeading();
 			w_estimated[i] = frc.getFilteredAngularVelocity();
 
 			// This should eventually add up to zero
-			t_cum_err += (t_estimated[i] - t_demod[i]);
+			t_cum_err += ((t_estimated[i] - t_demod[i]) % (2 * Math.PI));
 
 			player.advancePlayback();
 			++i;
@@ -362,20 +338,17 @@ public class AttitudeTrackerTests {
 		// Graph results
 		XYSeries x_m_s = new XYSeries("Measured position");
 		XYSeries x_e_s = new XYSeries("Estimated position");
-		XYSeries d_m_s = new XYSeries("Change in position");
 		XYSeries v_m_s = new XYSeries("Measured speed");
 		XYSeries v_e_s = new XYSeries("Estimated speed");
 		for(i = 0; i < NUM_DATAPOINTS; ++i) {
-			x_m_s.add(time[i], t_demod[i]);
+			x_m_s.add(time[i], t_measured[i]);
 			x_e_s.add(time[i], t_estimated[i]);
-			d_m_s.add(time[i], d_theta[i]);
 			v_m_s.add(time[i], w_measured[i]);
 			v_e_s.add(time[i], w_estimated[i]);
 		}
 		XYSeriesCollection sc = new XYSeriesCollection();
 		sc.addSeries(x_e_s);
 		sc.addSeries(x_m_s);
-		sc.addSeries(d_m_s);
 		sc.addSeries(v_e_s);
 		sc.addSeries(v_m_s);
 		

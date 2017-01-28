@@ -15,7 +15,8 @@ public class FilteredCompassReader {
 	double lastEstimatedAngVel = 0.0;
 	DenseMatrix64F R;
 	double headingBoost = 0.0;
-	
+	double theta_demod = 0.0;
+
 	FilteredCompassReader() {
 		DenseMatrix64F F =  makeF(0.1); // TODO 
 		DenseMatrix64F Q = new DenseMatrix64F(new double[][]{
@@ -75,17 +76,20 @@ public class FilteredCompassReader {
 		isFirstUpdate = false;
 	}
 	
+	public double getHeadingBoost() { return headingBoost; }
+	
 	private void updateEstimate(double theta_measured, double w_measured, double dt) {
 		if(dt == 0.0) {
 			// Initial measurement
-			
+			theta_measured = 0.0;	
 		} else {
-			// Normal update
-			double theta_demod;
-			if((theta_measured >  Math.PI / 2.0 && lastMeasuredHeading < -Math.PI / 2.0) ||
-			   (theta_measured < -Math.PI / 2.0 && lastMeasuredHeading >  Math.PI / 2.0)) {
-				// Defunct the modulo
+			// Normal update, convert mod-space heading (-pi to +pi) into linear space heading
+			if(theta_measured >  Math.PI / 2.0 && lastMeasuredHeading < -Math.PI / 2.0) {
+				headingBoost -= 2 * Math.PI;
+//				System.out.println("From " + lastMeasuredHeading + " to " + theta_measured + " so +boost, now = " + headingBoost);
+			} else if (theta_measured < -Math.PI / 2.0 && lastMeasuredHeading >  Math.PI / 2.0) {
 				headingBoost += 2 * Math.PI;
+//				System.out.println("From " + lastMeasuredHeading + " to " + theta_measured + " so -boost, now = " + headingBoost);
 			}
 			theta_demod = theta_measured + headingBoost;
 			DenseMatrix64F z = new DenseMatrix64F(new double [][]{
@@ -105,7 +109,9 @@ public class FilteredCompassReader {
 	}
 	
 	public double getFilteredHeading() {
-		return lastEstimatedHeading;
+		double heading = lastEstimatedHeading % (2 * Math.PI); 
+		if(heading >= Math.PI) { heading -= 2 * Math.PI; }
+		return heading;
 	}
 	public double getFilteredAngularVelocity() {
 		return lastEstimatedAngVel;

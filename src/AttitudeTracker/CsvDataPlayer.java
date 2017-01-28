@@ -8,9 +8,13 @@ import java.util.List;
 import org.apache.commons.csv.*;
 
 public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, TimeProvider {
-	int csvColHeading      = -1;
-	int csvColRotationRate = -1;
-	int csvColTime         = -1;
+	int csvColHeading = -1;
+	int csvColW       = -1;
+	int csvColMagAxA  = -1;
+	int csvColMagAxB  = -1;
+	double magCorrA = 0.0; 
+	double magCorrB = 0.0;
+	int csvColTime    = -1;
 	List<CSVRecord> csvRecords = null;
 	// Advance to the next record after all the information has been added
 	int numReadingsTakenThisRecord = 0;
@@ -20,7 +24,7 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 	double thisRecordHeading = 0;
 	double thisRecordRotationRate = 0;
 	
-	CsvDataPlayer(String filename, int col_heading, int col_rotation_rate, int col_time) {
+	CsvDataPlayer(String filename, int col_mag_ax_a, int col_mag_ax_b, double mag_corr_a, double mag_corr_b, int col_w, int col_time) {
 		try {
 			CSVParser csv_parser = new CSVParser(new FileReader(filename), CSVFormat.DEFAULT);
 			csvRecords = csv_parser.getRecords();
@@ -33,9 +37,12 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 			e.printStackTrace();
 		}
 		
-		csvColHeading      = col_heading;
-		csvColRotationRate = col_rotation_rate;
-		csvColTime         = col_time;
+		csvColMagAxA  = col_mag_ax_a;
+		csvColMagAxB  = col_mag_ax_b;
+		magCorrA = mag_corr_a;
+		magCorrB = mag_corr_b;
+		csvColW = col_w;
+		csvColTime    = col_time;
 	}
 	
 	public void advancePlayback() {
@@ -59,12 +66,14 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 
 	@Override
 	public double getW() {
-		return Double.parseDouble(csvRecords.get(curRecord).get(csvColRotationRate)) * Math.PI / 180.0;
+		return Double.parseDouble(csvRecords.get(curRecord).get(csvColW));
 	}
 
 	@Override
 	public double getHeading() {
-		return Double.parseDouble(csvRecords.get(curRecord).get(csvColHeading));
+		double mag_ax_a = Double.parseDouble(csvRecords.get(curRecord).get(csvColMagAxA)) - magCorrA;
+		double mag_ax_b = Double.parseDouble(csvRecords.get(curRecord).get(csvColMagAxB)) - magCorrB;
+		return Math.atan2(mag_ax_a, mag_ax_b);
 	}
 
 }
