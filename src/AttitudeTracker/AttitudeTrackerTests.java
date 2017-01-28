@@ -298,7 +298,7 @@ public class AttitudeTrackerTests {
 	public static void testKfWithRecordedData(boolean terminateAfter) {
 		// CSV columns in "2017-1-19 recording.csv": mag xyz, gyro xyz, corrected heading, time
 		// At this point yz on the magnetometer represent the yaw, and x on the gyro
-		CsvDataPlayer player = new CsvDataPlayer("2017-1-19 recording.csv", 1, 2, -164.0, -25.0, 5, 7);
+		CsvDataPlayer player = new CsvDataPlayer("2017-1-19 recording.csv", 1, 2, -164.0, -25.0, 4, -0.0, 30.0, 7);
 		FilteredCompassReader frc = new FilteredCompassReader();
 		frc.setDataSources(player, player, player);
 		
@@ -309,7 +309,7 @@ public class AttitudeTrackerTests {
 		double[] time        = new double[NUM_DATAPOINTS];
 		double[] t_measured  = new double[NUM_DATAPOINTS];
 		double[] t_estimated = new double[NUM_DATAPOINTS];
-		double[] t_demod     = new double[NUM_DATAPOINTS];
+		double[] t_cur_err   = new double[NUM_DATAPOINTS];
 		double   t_cum_err   = 0;
 		double[] w_measured  = new double[NUM_DATAPOINTS];
 		double[] w_estimated = new double[NUM_DATAPOINTS];
@@ -325,8 +325,10 @@ public class AttitudeTrackerTests {
 			t_estimated[i] = frc.getFilteredHeading();
 			w_estimated[i] = frc.getFilteredAngularVelocity();
 
+			t_cur_err[i] = (t_estimated[i] - t_measured[i]);// % (Math.PI );
+//			if(t_cur_err[i] < 0) { t_cur_err[i] += 2* Math.PI; }
 			// This should eventually add up to zero
-			t_cum_err += ((t_estimated[i] - t_demod[i]) % (2 * Math.PI));
+			t_cum_err += t_cur_err[i];
 
 			player.advancePlayback();
 			++i;
@@ -338,17 +340,20 @@ public class AttitudeTrackerTests {
 		// Graph results
 		XYSeries x_m_s = new XYSeries("Measured position");
 		XYSeries x_e_s = new XYSeries("Estimated position");
+		XYSeries x_r_s = new XYSeries("Position \"error\"");
 		XYSeries v_m_s = new XYSeries("Measured speed");
 		XYSeries v_e_s = new XYSeries("Estimated speed");
 		for(i = 0; i < NUM_DATAPOINTS; ++i) {
 			x_m_s.add(time[i], t_measured[i]);
 			x_e_s.add(time[i], t_estimated[i]);
+			x_r_s.add(time[i], t_cur_err[i]);
 			v_m_s.add(time[i], w_measured[i]);
 			v_e_s.add(time[i], w_estimated[i]);
 		}
 		XYSeriesCollection sc = new XYSeriesCollection();
 		sc.addSeries(x_e_s);
 		sc.addSeries(x_m_s);
+		sc.addSeries(x_r_s);
 		sc.addSeries(v_e_s);
 		sc.addSeries(v_m_s);
 		

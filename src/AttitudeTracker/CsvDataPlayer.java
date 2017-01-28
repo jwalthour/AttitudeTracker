@@ -10,10 +10,12 @@ import org.apache.commons.csv.*;
 public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, TimeProvider {
 	int csvColHeading = -1;
 	int csvColW       = -1;
+	double wMult      = 1.0;
+	double wOffset    = 0.0;
 	int csvColMagAxA  = -1;
 	int csvColMagAxB  = -1;
-	double magCorrA = 0.0; 
-	double magCorrB = 0.0;
+	double magCorrA   = 0.0; 
+	double magCorrB   = 0.0;
 	int csvColTime    = -1;
 	List<CSVRecord> csvRecords = null;
 	// Advance to the next record after all the information has been added
@@ -24,7 +26,7 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 	double thisRecordHeading = 0;
 	double thisRecordRotationRate = 0;
 	
-	CsvDataPlayer(String filename, int col_mag_ax_a, int col_mag_ax_b, double mag_corr_a, double mag_corr_b, int col_w, int col_time) {
+	CsvDataPlayer(String filename, int col_mag_ax_a, int col_mag_ax_b, double mag_corr_a, double mag_corr_b, int col_w, double w_mult, double w_offset, int col_time) {
 		try {
 			CSVParser csv_parser = new CSVParser(new FileReader(filename), CSVFormat.DEFAULT);
 			csvRecords = csv_parser.getRecords();
@@ -43,6 +45,8 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 		magCorrB = mag_corr_b;
 		csvColW = col_w;
 		csvColTime    = col_time;
+		wMult = w_mult;
+		wOffset = w_offset;
 	}
 	
 	public void advancePlayback() {
@@ -66,7 +70,7 @@ public class CsvDataPlayer implements HeadingProvider, HeadingRateProvider, Time
 
 	@Override
 	public double getW() {
-		return Double.parseDouble(csvRecords.get(curRecord).get(csvColW));
+		return (Double.parseDouble(csvRecords.get(curRecord).get(csvColW)) - wOffset) * wMult;
 	}
 
 	@Override
